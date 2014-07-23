@@ -31,15 +31,14 @@ class UserController extends HomeController {
 			if(!check_verify($verify)){
 				$this->error('验证码输入错误！');
 			}
-
 			/* 检测密码 */
 			if($password != $repassword){
 				$this->error('密码和重复密码不一致！');
-			}			
-
+			}	
 			/* 调用注册接口注册用户 */
             $User = new UserApi;
-			$uid = $User->register($username, $password, $email);
+            $id   = uuid();
+			$uid  = $User->register($id,$username, $password, $email);
 			if(0 < $uid){ //注册成功
 				//TODO: 发送验证邮件
 				$this->success('注册成功！',U('login'));
@@ -47,7 +46,7 @@ class UserController extends HomeController {
 				$this->error($this->showRegError($uid));
 			}
 
-		} else { //显示注册表单
+		} else { //显示注册表单 
 			$this->display();
 		}
 	}
@@ -173,6 +172,15 @@ class UserController extends HomeController {
 		if ( !is_login() ) {
 			$this->error( '您还没有登陆',U('User/login') );
 		}
+
+		$array = explode(",",'花地玛堂区,圣安多尼堂区,大堂区,望德堂区,风顺堂区,嘉模堂区,圣方济各堂区');
+		//$array = array('南开区','和平区','河西区','河东区','红桥区','河北区','还有环城四区','西青区','津南区','北辰区','东丽区');
+		
+		foreach ($array as $value) {
+			$data = array('name'=>$value,'province_id'=>31);
+			M('cityinfo')->add($data);
+		}
+
         if (IS_POST) {
         	$personal      = D('personal');
             $data     	   = $personal->create();
@@ -185,8 +193,26 @@ class UserController extends HomeController {
             }
         }else{
         	if(!M('personal')->where(array('uid'=>is_login()))->find()){$data=array('uid'=>is_login(),'birthday'=>'');M('personal')->add($data);}
-        	$result = M('personal')->where(array('uid'=>is_login()))->find();
-			p($result);
+        	$result   = M('personal')->where(array('uid'=>is_login()))->find();
+     		
+     		if(!S('province')){
+     			$this->province = $province = M('provinceinfo')->field('id,name')->select();
+     			S('province',$province,7200);
+     		}else{
+     			$this->province = $province = S('province');
+     		}
+
+       	    if(!S('cityinfo')){
+     			$cityinfo = M('cityinfo')->field('name,province_id')->select();
+     			$array = array();
+	     		foreach ($cityinfo as $k => $v) {
+	     			$array[$v['province_id']][] = array('name'=>$v['name']); 
+	     		}
+	     		$this->cityinfo = $array;
+     			S('cityinfo',$array,7200);
+     		}else{
+     			$this->cityinfo = $cityinfo = S('cityinfo');
+     		}
         	$this->result = $result;
             $this->display();
         }
